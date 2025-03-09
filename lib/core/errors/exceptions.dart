@@ -1,0 +1,1 @@
+class EventsException implements Exception {}
