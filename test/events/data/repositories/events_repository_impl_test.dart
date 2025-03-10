@@ -89,7 +89,7 @@ void main() {
       // Act
       await repository.getEvents(
         byDate: testDate,
-        byStatus: EventStatus.upcoming,
+        byStatus: [EventStatus.upcoming],
         byLocationType: EventLocationType.online,
       );
 
@@ -97,7 +97,7 @@ void main() {
       verify(
         () => mockDataSource.fetchEvents(
           byDate: testDate,
-          byStatus: EventStatus.upcoming,
+          byStatus: [EventStatus.upcoming],
           byLocationType: EventLocationType.online,
         ),
       ).called(1);
@@ -168,7 +168,7 @@ void main() {
       await repository.getUserRegisteredEvents(
         testUserId,
         byDate: testDate,
-        byStatus: EventStatus.upcoming,
+        byStatus: [EventStatus.upcoming],
         byLocationType: EventLocationType.online,
       );
 
@@ -177,7 +177,7 @@ void main() {
         () => mockDataSource.fetchUserRegisteredEvents(
           testUserId,
           byDate: testDate,
-          byStatus: EventStatus.upcoming,
+          byStatus: [EventStatus.upcoming],
           byLocationType: EventLocationType.online,
         ),
       ).called(1);

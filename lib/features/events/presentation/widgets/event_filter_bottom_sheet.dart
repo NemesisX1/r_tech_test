@@ -2,27 +2,35 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import 'package:ionicons/ionicons.dart';
 import 'package:repat_event/core/themes/app_colors.dart';
 import 'package:repat_event/core/widgets/action_button_widget.dart';
+import 'package:repat_event/features/events/domain/entities/event.dart';
+import 'package:repat_event/features/events/domain/entities/event_filter.dart';
 
 class EventFilterBottomSheet extends StatefulWidget {
-  const EventFilterBottomSheet({super.key});
+  const EventFilterBottomSheet({
+    super.key,
+    this.filter,
+  });
+
+  final EventFilter? filter;
 
   @override
   State<EventFilterBottomSheet> createState() => _EventFilterBottomSheetState();
 }
 
 class _EventFilterBottomSheetState extends State<EventFilterBottomSheet> {
-  String? _selectedTimeFilter;
-  final List<String> _selectedStatus = ['Paid', 'Completed'];
-  String? _selectedEventType;
+  late EventFilter _filter;
 
   @override
   void initState() {
     super.initState();
-    _selectedTimeFilter = 'Today';
-    _selectedEventType = 'Offline';
+    _filter = widget.filter ??
+        const EventFilter(
+          eventType: EventLocationType.offline,
+        );
   }
 
   @override
@@ -53,7 +61,6 @@ class _EventFilterBottomSheetState extends State<EventFilterBottomSheet> {
                 ),
               ),
               const Gap(16),
-
               Center(
                 child: Text(
                   'Filter',
@@ -64,35 +71,11 @@ class _EventFilterBottomSheetState extends State<EventFilterBottomSheet> {
                 ),
               ),
               const Gap(24),
-
-              // Time & Date section
-              const Text(
-                'Time & Date',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const Gap(12),
-
-              // Time filter chips
-              Row(
-                children: [
-                  _buildTimeFilterChip('Today'),
-                  const Gap(8),
-                  _buildTimeFilterChip('Tomorrow'),
-                  const Gap(8),
-                  _buildTimeFilterChip('This week'),
-                ],
-              ),
-              const Gap(16),
-
-              // Calendar picker
               const Text(
                 'Choose from calendar',
                 style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
               const Gap(8),
@@ -102,8 +85,24 @@ class _EventFilterBottomSheetState extends State<EventFilterBottomSheet> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: TextField(
+                  readOnly: true,
+                  onTap: () {
+                    showDatePicker(
+                      context: context,
+                      firstDate: DateTime(2023),
+                      lastDate: DateTime(2026),
+                    ).then((date) {
+                      if (date != null) {
+                        setState(() {
+                          _filter = _filter.copyWith(timeFilter: date);
+                        });
+                      }
+                    });
+                  },
                   decoration: InputDecoration(
-                    hintText: 'Ex 01.01.2023',
+                    hintText: _filter.timeFilter != null
+                        ? DateFormat('dd.MM.yyyy').format(_filter.timeFilter!)
+                        : 'Ex 01.01.2023',
                     hintStyle: const TextStyle(color: Colors.grey),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -121,8 +120,6 @@ class _EventFilterBottomSheetState extends State<EventFilterBottomSheet> {
                 ),
               ),
               const Gap(24),
-
-              // Status section
               const Text(
                 'Status',
                 style: TextStyle(
@@ -131,22 +128,17 @@ class _EventFilterBottomSheetState extends State<EventFilterBottomSheet> {
                 ),
               ),
               const Gap(12),
-
-              // Status filter chips
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  _buildStatusChip('Paid'),
-                  _buildStatusChip('Completed'),
-                  _buildStatusChip('Write now'),
-                  _buildStatusChip('Canceled'),
-                  _buildStatusChip('Upcoming'),
+                  _buildStatusChip(EventStatus.paid),
+                  _buildStatusChip(EventStatus.completed),
+                  _buildStatusChip(EventStatus.upcoming),
+                  _buildStatusChip(EventStatus.canceled),
                 ],
               ),
               const Gap(24),
-
-              // Event Type section
               const Text(
                 'Pick Event Type',
                 style: TextStyle(
@@ -155,18 +147,22 @@ class _EventFilterBottomSheetState extends State<EventFilterBottomSheet> {
                 ),
               ),
               const Gap(12),
-
-              // Event type filter
               Row(
                 spacing: 8,
                 children: [
-                  Expanded(child: _buildEventTypeChip('Offline')),
-                  Expanded(child: _buildEventTypeChip('Online')),
+                  Expanded(
+                    child: _buildEventTypeChip(
+                      EventLocationType.offline,
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildEventTypeChip(
+                      EventLocationType.online,
+                    ),
+                  ),
                 ],
               ),
               const Gap(24),
-
-              // Bottom buttons
               Row(
                 spacing: 12,
                 children: [
@@ -187,12 +183,7 @@ class _EventFilterBottomSheetState extends State<EventFilterBottomSheet> {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {
-                        // Save filters and close
-                        context.pop({
-                          'timeFilter': _selectedTimeFilter,
-                          'status': _selectedStatus,
-                          'eventType': _selectedEventType,
-                        });
+                        context.pop(_filter);
                       },
                       child: const Text(
                         'Save',
@@ -213,33 +204,19 @@ class _EventFilterBottomSheetState extends State<EventFilterBottomSheet> {
     );
   }
 
-  Widget _buildTimeFilterChip(String label) {
-    final isSelected = _selectedTimeFilter == label;
-
-    return Expanded(
-      child: ActionButton(
-        title: label,
-        isActionned: isSelected,
-        onPressed: () {
-          setState(() {
-            _selectedTimeFilter = label;
-          });
-        },
-      ),
-    );
-  }
-
-  Widget _buildStatusChip(String label) {
-    final isSelected = _selectedStatus.contains(label);
+  Widget _buildStatusChip(EventStatus label) {
+    final isSelected = _filter.status.contains(label);
 
     return GestureDetector(
       onTap: () {
         setState(() {
+          final newStatus = List<EventStatus>.from(_filter.status);
           if (isSelected) {
-            _selectedStatus.remove(label);
+            newStatus.remove(label);
           } else {
-            _selectedStatus.add(label);
+            newStatus.add(label);
           }
+          _filter = _filter.copyWith(status: newStatus);
         });
       },
       child: AnimatedContainer(
@@ -256,7 +233,7 @@ class _EventFilterBottomSheetState extends State<EventFilterBottomSheet> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              label,
+              label.name,
               style: TextStyle(
                 fontFamily: 'SFProDisplay',
                 color: isSelected ? Colors.white : Colors.black,
@@ -287,23 +264,26 @@ class _EventFilterBottomSheetState extends State<EventFilterBottomSheet> {
     );
   }
 
-  Widget _buildEventTypeChip(String label) {
-    final isSelected = _selectedEventType == label;
+  Widget _buildEventTypeChip(EventLocationType label) {
+    final isSelected = _filter.eventType == label;
 
     return ActionButton(
-      title: label,
+      title: label.name,
       isActionned: isSelected,
       onPressed: () {
         setState(() {
-          _selectedEventType = label;
+          _filter = _filter.copyWith(eventType: label);
         });
       },
     );
   }
 }
 
-void showFilterBottomSheet(BuildContext context) {
-  showModalBottomSheet<void>(
+Future<EventFilter?> showFilterBottomSheet(
+  BuildContext context, {
+  EventFilter? filter,
+}) {
+  return showModalBottomSheet<EventFilter?>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
@@ -311,7 +291,9 @@ void showFilterBottomSheet(BuildContext context) {
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
-      child: const EventFilterBottomSheet(),
+      child: EventFilterBottomSheet(
+        filter: filter,
+      ),
     ),
   );
 }

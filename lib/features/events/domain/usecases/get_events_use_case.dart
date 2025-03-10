@@ -3,9 +3,10 @@ import 'package:equatable/equatable.dart';
 import 'package:repat_event/core/errors/use_case_failure.dart';
 import 'package:repat_event/core/usecases/usecase.dart';
 import 'package:repat_event/features/events/domain/entities/event.dart';
+import 'package:repat_event/features/events/domain/entities/event_filter.dart';
 import 'package:repat_event/features/events/domain/repositories/events_repository.dart';
 
-class GetEventsUseCase implements UseCase<List<Event>, NoParams> {
+class GetEventsUseCase implements UseCase<List<Event>, GetEventsUseCaseParams> {
   const GetEventsUseCase(
     this.repository,
   );
@@ -16,15 +17,32 @@ class GetEventsUseCase implements UseCase<List<Event>, NoParams> {
   String get identifier => 'get_event_use_case';
 
   @override
-  Future<Either<Failure, List<Event>>> call(NoParams params) async {
+  Future<Either<Failure, List<Event>>> call(
+    GetEventsUseCaseParams params,
+  ) async {
     try {
-      final events = await repository.getEvents();
+      final events = await repository.getEvents(
+        byDate: params.filter?.timeFilter,
+        byStatus: params.filter?.status,
+        byLocationType: params.filter?.eventType,
+      );
 
       return Right(events);
     } catch (e) {
       return Left(EventsFetchFailure());
     }
   }
+}
+
+class GetEventsUseCaseParams extends Equatable {
+  const GetEventsUseCaseParams({
+    this.filter,
+  });
+
+  final EventFilter? filter;
+
+  @override
+  List<Object> get props => [filter ?? const []];
 }
 
 class GetRegisteredEventsUseCase

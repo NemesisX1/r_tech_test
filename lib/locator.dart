@@ -1,8 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get_it/get_it.dart';
 import 'package:repat_event/features/auth/presentation/cubit/auth_cubit.dart';
-import 'package:repat_event/features/events/data/datasources/events_firestore_data_source.dart';
+import 'package:repat_event/features/events/data/datasources/events_firestore_data_source_impl.dart';
 import 'package:repat_event/features/events/data/repositories/events_repository_impl.dart';
+import 'package:repat_event/features/events/domain/usecases/add_booking_use_case.dart';
+import 'package:repat_event/features/events/domain/usecases/cancel_booking_use_case.dart';
 import 'package:repat_event/features/events/domain/usecases/get_events_use_case.dart';
 import 'package:repat_event/features/events/presentation/bloc/events_bloc.dart';
 
@@ -21,6 +24,9 @@ Future<void> setupLocator() async {
     /// Db
     ..registerLazySingleton<FirebaseFirestore>(
       () => FirebaseFirestore.instance,
+    )
+    ..registerLazySingleton<FirebaseAuth>(
+      () => FirebaseAuth.instance,
     )
 
     /// Datasources
@@ -45,6 +51,16 @@ Future<void> setupLocator() async {
     )
     ..registerLazySingleton<GetRegisteredEventsUseCase>(
       () => GetRegisteredEventsUseCase(
+        locator<EventsRepositoryImpl>(),
+      ),
+    )
+    ..registerLazySingleton<CancelBookingUseCase>(
+      () => CancelBookingUseCase(
+        locator<EventsRepositoryImpl>(),
+      ),
+    )
+    ..registerLazySingleton<AddBookingUseCase>(
+      () => AddBookingUseCase(
         locator<EventsRepositoryImpl>(),
       ),
     );

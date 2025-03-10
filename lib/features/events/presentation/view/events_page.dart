@@ -1,15 +1,20 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:gap/gap.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:heroicons/heroicons.dart';
+import 'package:repat_event/core/dialogs/app_dialog.dart';
 import 'package:repat_event/core/themes/app_colors.dart';
 import 'package:repat_event/core/widgets/action_button_widget.dart';
 import 'package:repat_event/core/widgets/app_error_widget.dart';
 import 'package:repat_event/core/widgets/loader_widget.dart';
-import 'package:repat_event/features/events/domain/entities/event.dart';
 import 'package:repat_event/features/events/presentation/bloc/events_bloc.dart';
+import 'package:repat_event/features/events/presentation/widgets/event_cancel_bottom_sheet.dart';
+import 'package:repat_event/features/events/presentation/widgets/event_cancel_reason_bottom_sheet.dart';
 import 'package:repat_event/features/events/presentation/widgets/event_card.dart';
 import 'package:repat_event/features/events/presentation/widgets/event_filter_bottom_sheet.dart';
 import 'package:repat_event/locator.dart';
@@ -34,7 +39,7 @@ class EventsView extends StatefulWidget {
 }
 
 class _EventsViewState extends State<EventsView> {
-  bool showAllEvents = true;
+  bool showUserEvents = false;
 
   @override
   Widget build(BuildContext context) {
@@ -55,7 +60,21 @@ class _EventsViewState extends State<EventsView> {
         actions: [
           IconButton(
             onPressed: () {
-              showFilterBottomSheet(context);
+              final currentActiveFilter =
+                  context.read<EventsBloc>().activeFilter;
+
+              showFilterBottomSheet(
+                context,
+                filter: currentActiveFilter,
+              ).then(
+                (value) {
+                  if (value != null && context.mounted) {
+                    context.read<EventsBloc>().add(
+                          EventsFetchEvent(filter: value),
+                        );
+                  }
+                },
+              );
             },
             icon: const HeroIcon(
               HeroIcons.funnel,
@@ -79,13 +98,13 @@ class _EventsViewState extends State<EventsView> {
               children: [
                 Expanded(
                   child: ActionButton(
-                    isActionned: showAllEvents,
+                    isActionned: !showUserEvents,
                     title: 'All events',
                     onPressed: () {
                       setState(() {
-                        showAllEvents = true;
+                        showUserEvents = false;
                       });
-                      context.read<EventsBloc>().add(const EventsFetchEvents());
+                      context.read<EventsBloc>().add(const EventsFetchEvent());
                     },
                   ),
                 ),
@@ -93,15 +112,15 @@ class _EventsViewState extends State<EventsView> {
                 Expanded(
                   child: ActionButton(
                     title: 'My events',
-                    isActionned: !showAllEvents,
+                    isActionned: showUserEvents,
                     onPressed: () {
                       setState(() {
-                        showAllEvents = false;
+                        showUserEvents = true;
                       });
 
                       context
                           .read<EventsBloc>()
-                          .add(const EventsFetchRegisteredEvents());
+                          .add(const EventsFetchRegisteredEvent());
                     },
                   ),
                 ),
@@ -111,7 +130,7 @@ class _EventsViewState extends State<EventsView> {
               child: BlocBuilder<EventsBloc, EventsState>(
                 builder: (context, state) {
                   if (state is EventsInitial) {
-                    context.read<EventsBloc>().add(const EventsFetchEvents());
+                    context.read<EventsBloc>().add(const EventsFetchEvent());
                   }
 
                   if (state is EventsLoading) {
@@ -131,7 +150,7 @@ class _EventsViewState extends State<EventsView> {
 
                   if (state is EventsFetchSuccessState) {
                     if (state.events.isEmpty) {
-                      if (showAllEvents) {
+                      if (!showUserEvents) {
                         return const Padding(
                           padding: EdgeInsets.all(20),
                           child: AppErrorWidget(
@@ -183,7 +202,83 @@ Start searching for events now by clicking the button below.''',
                             .map(
                               (e) => EventCard(
                                 event: e,
-                                userMode: !showAllEvents,
+                                showAsParticipant: showUserEvents,
+                                onCancelBooking: () async {
+                                  final hasCanceled =
+                                      await showEventCancelBottomSheet(context);
+
+                                  if (hasCanceled != null &&
+                                      hasCanceled &&
+                                      context.mounted) {
+                                    final reason =
+                                        await showModalBottomSheet<String>(
+                                      context: context,
+                                      isScrollControlled: true,
+                                      backgroundColor: Colors.transparent,
+                                      builder: (context) => Padding(
+                                        padding: EdgeInsets.only(
+                                          bottom: MediaQuery.of(context)
+                                              .viewInsets
+                                              .bottom,
+                                        ),
+                                        child: EventCancelReasonBottomSheet(
+                                          event: e,
+                                        ),
+                                      ),
+                                    );
+                                    if (context.mounted) {
+                                      context.read<EventsBloc>().add(
+                                            EventsCancelBookingEvent(
+                                              eventId: e.id,
+                                              reason: reason,
+                                              onSuccess: () {
+                                                unawaited(
+                                                  showDialog<void>(
+                                                    context: context,
+                                                    builder: (_) =>
+                                                        const AppSuccessDialog(
+                                                      title: 'Successful!',
+                                                      subtitle:
+                                                          '''You have successfully canceled the event. 80% of the fonds will be returned to your account.''',
+                                                    ),
+                                                  ).whenComplete(
+                                                    () {
+                                                      if (context.mounted) {
+                                                        context.go('/events');
+                                                      }
+                                                    },
+                                                  ),
+                                                );
+
+                                                setState(() {
+                                                  showUserEvents = false;
+                                                });
+                                              },
+                                              onError: () {
+                                                unawaited(
+                                                  showDialog<void>(
+                                                    context: context,
+                                                    builder: (_) =>
+                                                        const AppFailedDialog(
+                                                      title:
+                                                          'Failed to cancel !',
+                                                      subtitle:
+                                                          '''We weren't able to cancel you booking. Please try again later''',
+                                                    ),
+                                                  ).whenComplete(
+                                                    () {
+                                                      if (context.mounted) {
+                                                        context.go('/events');
+                                                      }
+                                                    },
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          );
+                                    }
+                                  }
+                                },
                               ),
                             )
                             .toList(),

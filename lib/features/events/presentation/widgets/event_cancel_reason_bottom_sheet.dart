@@ -1,20 +1,18 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:repat_event/core/themes/app_colors.dart';
-import 'package:repat_event/features/events/data/repositories/events_repository_impl.dart';
 import 'package:repat_event/features/events/domain/entities/event.dart';
-import 'package:repat_event/locator.dart';
 
 class EventCancelReasonBottomSheet extends StatefulWidget {
   const EventCancelReasonBottomSheet({
-    super.key,
     required this.event,
+    super.key,
   });
 
   final Event event;
+
   @override
   State<EventCancelReasonBottomSheet> createState() =>
       _EventCancelReasonBottomSheetState();
@@ -24,8 +22,6 @@ class _EventCancelReasonBottomSheetState
     extends State<EventCancelReasonBottomSheet> {
   String? _selectedReason;
   final TextEditingController _otherReasonController = TextEditingController();
-
-  final eventRepository = locator<EventsRepositoryImpl>();
 
   // List of cancellation reasons
   final List<String> _cancellationReasons = [
@@ -209,17 +205,7 @@ class _EventCancelReasonBottomSheetState
                     ? _otherReasonController.text
                     : _selectedReason;
 
-                eventRepository
-                    .cancelUserBookingFromEvent(
-                  eventId: widget.event.id,
-                  userId: FirebaseAuth.instance.currentUser!.uid,
-                  reason: reason,
-                )
-                    .then((value) {
-                  if (context.mounted) context.pop(reason);
-                }).catchError((error) {
-                  if (context.mounted) context.pop();
-                });
+                context.pop(reason);
               },
               child: const Text(
                 'Cancel Booking',

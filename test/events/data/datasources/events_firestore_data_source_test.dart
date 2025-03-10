@@ -1,6 +1,6 @@
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:repat_event/features/events/data/datasources/events_firestore_data_source.dart';
+import 'package:repat_event/features/events/data/datasources/events_firestore_data_source_impl.dart';
 import 'package:repat_event/features/events/data/models/event_model.dart';
 import 'package:repat_event/features/events/domain/entities/event.dart';
 
@@ -74,7 +74,7 @@ void main() {
       await fakeFirestore.collection('events').add(testEvent2Data);
 
       final result = await dataSource.fetchEvents(
-        byStatus: EventStatus.upcoming,
+        byStatus: [EventStatus.upcoming],
       );
 
       expect(result.length, 1);
@@ -106,7 +106,7 @@ void main() {
 
       final result = await dataSource.fetchEvents(
         byDate: DateTime(2023, 5, 15),
-        byStatus: EventStatus.upcoming,
+        byStatus: [EventStatus.upcoming],
       );
 
       expect(result.length, 1);
@@ -191,7 +191,7 @@ void main() {
 
       final result = await dataSource.fetchUserRegisteredEvents(
         userId,
-        byStatus: EventStatus.upcoming,
+        byStatus: [EventStatus.upcoming],
       );
 
       expect(result.length, 1);

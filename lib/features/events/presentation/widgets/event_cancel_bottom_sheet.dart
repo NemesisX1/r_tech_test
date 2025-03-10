@@ -94,7 +94,7 @@ class EventCancelBottomSheet extends StatelessWidget {
 }
 
 Future<bool?> showEventCancelBottomSheet(BuildContext context) {
-  return showModalBottomSheet<bool>(
+  return showModalBottomSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,

@@ -1,5 +1,4 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
@@ -9,17 +8,17 @@ import 'package:intl/intl.dart';
 import 'package:ionicons/ionicons.dart';
 import 'package:repat_event/core/themes/app_colors.dart';
 import 'package:repat_event/core/widgets/loader_widget.dart';
-import 'package:repat_event/features/events/data/repositories/events_repository_impl.dart';
 import 'package:repat_event/features/events/domain/entities/event.dart';
-import 'package:repat_event/locator.dart';
 
 class EventTicketBuyBottomSheet extends StatefulWidget {
   const EventTicketBuyBottomSheet({
     required this.event,
+    required this.onCancelBooking,
     super.key,
   });
 
   final Event event;
+  final Future<void> Function(int ticketCount) onCancelBooking;
 
   @override
   State<EventTicketBuyBottomSheet> createState() =>
@@ -33,8 +32,6 @@ class _EventTicketBuyBottomSheetState extends State<EventTicketBuyBottomSheet> {
   final TextEditingController nameController = TextEditingController();
 
   bool _isLoading = false;
-
-  final eventRepository = locator<EventsRepositoryImpl>();
 
   @override
   Widget build(BuildContext context) {
@@ -264,19 +261,16 @@ class _EventTicketBuyBottomSheetState extends State<EventTicketBuyBottomSheet> {
                 setState(() {
                   _isLoading = true;
                 });
-                eventRepository
-                    .registerUserForEvent(
-                  eventId: widget.event.id,
-                  userId: FirebaseAuth.instance.currentUser!.uid,
-                  ticketCount: ticketCount,
-                )
-                    .whenComplete(() {
-                  if (context.mounted) context.pop(true);
-                }).catchError((e) {
-                  if (context.mounted) {
-                    context.pop(false);
-                  }
-                });
+
+                widget.onCancelBooking(ticketCount).then(
+                  (_) {
+                    if (context.mounted) context.pop(true);
+                  },
+                ).catchError(
+                  (_) {
+                    if (context.mounted) context.pop(false);
+                  },
+                );
               }
             },
             style: ElevatedButton.styleFrom(
@@ -310,6 +304,7 @@ class _EventTicketBuyBottomSheetState extends State<EventTicketBuyBottomSheet> {
 Future<bool?> showEventTicketBuyBottomSheet(
   BuildContext context,
   Event event,
+  Future<void> Function(int ticketCount) onCancelBooking,
 ) {
   return showModalBottomSheet<bool?>(
     context: context,
@@ -321,6 +316,7 @@ Future<bool?> showEventTicketBuyBottomSheet(
       ),
       child: EventTicketBuyBottomSheet(
         event: event,
+        onCancelBooking: onCancelBooking,
       ),
     ),
   );

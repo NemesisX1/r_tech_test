@@ -16,7 +16,7 @@ class EventsRepositoryImpl implements EventsRepository {
   @override
   Future<List<Event>> getEvents({
     DateTime? byDate,
-    EventStatus? byStatus,
+    List<EventStatus>? byStatus,
     EventLocationType? byLocationType,
   }) async {
     try {
@@ -40,7 +40,7 @@ class EventsRepositoryImpl implements EventsRepository {
   Future<List<Event>> getUserRegisteredEvents(
     String userId, {
     DateTime? byDate,
-    EventStatus? byStatus,
+    List<EventStatus>? byStatus,
     EventLocationType? byLocationType,
   }) async {
     try {

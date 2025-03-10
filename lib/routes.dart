@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ionicons/ionicons.dart';
 import 'package:repat_event/features/auth/presentation/view/auth_page.dart';
-import 'package:repat_event/features/events/domain/entities/event.dart';
-import 'package:repat_event/features/events/presentation/view/events_details.dart';
+import 'package:repat_event/features/events/presentation/view/events_details_page.dart';
 import 'package:repat_event/features/events/presentation/view/events_page.dart';
 import 'package:repat_event/features/notifications/presentation/view/notifications_page.dart';
 import 'package:repat_event/features/reviews/presentation/view/reviews_page.dart';
@@ -29,7 +28,7 @@ final router = GoRouter(
       builder: (context, state) {
         final params = state.extra as EventsDetailsPageParams?;
 
-        return EventsDetails(
+        return EventsDetailsPage(
           params: params!,
         );
       },

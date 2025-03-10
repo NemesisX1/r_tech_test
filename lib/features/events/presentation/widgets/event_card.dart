@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
@@ -7,21 +5,21 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:ionicons/ionicons.dart';
-import 'package:repat_event/core/dialogs/app_dialog.dart';
 import 'package:repat_event/core/themes/app_colors.dart';
 import 'package:repat_event/features/events/domain/entities/event.dart';
-import 'package:repat_event/features/events/presentation/view/events_details.dart';
-import 'package:repat_event/features/events/presentation/widgets/event_cancel_bottom_sheet.dart';
-import 'package:repat_event/features/events/presentation/widgets/event_cancel_reason_bottom_sheet.dart';
+import 'package:repat_event/features/events/presentation/view/events_details_page.dart';
 
 class EventCard extends StatelessWidget {
   const EventCard({
     required this.event,
-    required this.userMode,
+    required this.showAsParticipant,
+    this.onCancelBooking,
     super.key,
   });
   final Event event;
-  final bool userMode;
+  final bool showAsParticipant;
+
+  final VoidCallback? onCancelBooking;
 
   @override
   Widget build(BuildContext context) {
@@ -37,14 +35,11 @@ class EventCard extends StatelessWidget {
           '/events-details',
           extra: EventsDetailsPageParams(
             event: event,
-            userMode: userMode,
+            showAsParticipant: showAsParticipant,
           ),
         );
       },
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          minHeight: size.height * 0.17,
-        ),
+      child: IntrinsicHeight(
         child: Card(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -58,12 +53,15 @@ class EventCard extends StatelessWidget {
                   ),
           ),
           elevation: 2,
-          color: const Color(0xffFFF9EF),
+          color: isPassed
+              ? const Color(0xffFFF9EF).withValues(alpha: .80)
+              : const Color(0xffFFF9EF),
           child: Padding(
             padding: const EdgeInsets.all(10),
             child: Column(
-              mainAxisAlignment:
-                  userMode ? MainAxisAlignment.start : MainAxisAlignment.center,
+              mainAxisAlignment: showAsParticipant
+                  ? MainAxisAlignment.start
+                  : MainAxisAlignment.center,
               children: [
                 Center(
                   child: IntrinsicHeight(
@@ -122,25 +120,28 @@ class EventCard extends StatelessWidget {
                                   fontSize: 24,
                                 ),
                               ),
-                              Row(
-                                spacing: 5,
-                                children: [
-                                  const Icon(
-                                    Ionicons.ticket,
-                                    size: 16,
-                                  ),
-                                  Text(
-                                    (event.ticketType == EventTicketType.free)
-                                        ? 'Free'
-                                        : '€ ${event.pricing.toStringAsFixed(2)}',
-                                    style: const TextStyle(
-                                      color: Color(0xff111827),
-                                      fontWeight: FontWeight.w500,
-                                      fontSize: 14,
+                              if (isPassed && !showAsParticipant)
+                                const SizedBox.shrink()
+                              else
+                                Row(
+                                  spacing: 5,
+                                  children: [
+                                    const Icon(
+                                      Ionicons.ticket,
+                                      size: 16,
                                     ),
-                                  ),
-                                ],
-                              ),
+                                    Text(
+                                      (event.ticketType == EventTicketType.free)
+                                          ? 'Free'
+                                          : '''€ ${event.pricing.toStringAsFixed(2)}''',
+                                      style: const TextStyle(
+                                        color: Color(0xff111827),
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                             ],
                           ),
                         ),
@@ -156,7 +157,23 @@ class EventCard extends StatelessWidget {
                                     : Colors.transparent,
                               ),
                             ),
-                            if (userMode) ...[
+                            if (isPassed && !showAsParticipant)
+                              Container(
+                                padding: const EdgeInsets.all(5),
+                                decoration: BoxDecoration(
+                                  color: AppColors.gray,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Text(
+                                  'Completed',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ),
+                            if (showAsParticipant) ...[
                               if (event.startDate.millisecondsSinceEpoch >
                                   DateTime.now().millisecondsSinceEpoch)
                                 Container(
@@ -197,7 +214,7 @@ class EventCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (userMode) ...[
+                if (showAsParticipant) ...[
                   const Gap(10),
                   const Divider(),
                   const Gap(10),
@@ -205,56 +222,7 @@ class EventCard extends StatelessWidget {
                     SizedBox(
                       width: size.width,
                       child: OutlinedButton(
-                        onPressed: () async {
-                          final hasCanceled =
-                              await showEventCancelBottomSheet(context);
-
-                          if (hasCanceled != null &&
-                              hasCanceled &&
-                              context.mounted) {
-                            final reason =
-                                await showEventCancelReasonBottomSheet(
-                              context,
-                              event,
-                            );
-
-                            if (reason != null && context.mounted) {
-                              unawaited(
-                                showDialog<void>(
-                                  context: context,
-                                  builder: (_) => const AppSuccessDialog(
-                                    title: 'Successful!',
-                                    subtitle:
-                                        '''You have successfully canceled the event. 80% of the fonds will be returned to your account.''',
-                                  ),
-                                ).whenComplete(
-                                  () {
-                                    if (context.mounted) context.go('/events');
-                                  },
-                                ),
-                              );
-                            } else {
-                              if (context.mounted) {
-                                unawaited(
-                                  showDialog<void>(
-                                    context: context,
-                                    builder: (_) => const AppFailedDialog(
-                                      title: 'Failed to cancel !',
-                                      subtitle:
-                                          '''We weren't able to cancel you booking. Please try again later''',
-                                    ),
-                                  ).whenComplete(
-                                    () {
-                                      if (context.mounted) {
-                                        context.go('/events');
-                                      }
-                                    },
-                                  ),
-                                );
-                              }
-                            }
-                          }
-                        },
+                        onPressed: onCancelBooking,
                         child: const Text(
                           'Cancel Booking',
                           style: TextStyle(

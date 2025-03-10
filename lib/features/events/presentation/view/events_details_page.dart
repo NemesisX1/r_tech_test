@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -13,22 +13,29 @@ import 'package:repat_event/core/dialogs/app_dialog.dart';
 import 'package:repat_event/core/themes/app_colors.dart';
 import 'package:repat_event/core/widgets/app_text_button_widget.dart';
 import 'package:repat_event/features/events/domain/entities/event.dart';
+import 'package:repat_event/features/events/presentation/bloc/events_bloc.dart';
 import 'package:repat_event/features/events/presentation/widgets/event_cancel_bottom_sheet.dart';
 import 'package:repat_event/features/events/presentation/widgets/event_cancel_reason_bottom_sheet.dart';
 import 'package:repat_event/features/events/presentation/widgets/event_ticket_buy_bottom_sheet.dart';
+import 'package:repat_event/locator.dart';
 
-class EventsDetailsPageParams {
-  const EventsDetailsPageParams({
-    required this.event,
-    this.userMode = false,
-  });
+class EventsDetailsPage extends StatelessWidget {
+  const EventsDetailsPage({required this.params, super.key});
 
-  final Event event;
-  final bool userMode;
+  final EventsDetailsPageParams params;
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => locator<EventsBloc>(),
+      child: EventsDetailsView(
+        params: params,
+      ),
+    );
+  }
 }
 
-class EventsDetails extends StatelessWidget {
-  const EventsDetails({
+class EventsDetailsView extends StatelessWidget {
+  const EventsDetailsView({
     required this.params,
     super.key,
   });
@@ -87,9 +94,7 @@ class EventsDetails extends StatelessWidget {
                 fontSize: 30,
               ),
             ),
-            if (params.event.attendeeIDs!
-                .contains(FirebaseAuth.instance.currentUser!.uid))
-              const Text('You are a participant.'),
+            if (params.showAsParticipant) const Text('You are a participant.'),
             const Gap(20),
             Column(
               spacing: 24,
@@ -231,7 +236,7 @@ class EventsDetails extends StatelessWidget {
         child: Row(
           spacing: 30,
           children: [
-            if (params.userMode) ...[
+            if (params.showAsParticipant) ...[
               if (!isEventPassed)
                 Expanded(
                   child: OutlinedButton(
@@ -242,35 +247,63 @@ class EventsDetails extends StatelessWidget {
                       if (hasCanceled != null &&
                           hasCanceled &&
                           context.mounted) {
-                        final reason = await showEventCancelReasonBottomSheet(
-                          context,
-                          params.event,
-                        );
-
-                        if (reason != null && context.mounted) {
-                          unawaited(
-                            showDialog(
-                              context: context,
-                              builder: (_) => const AppSuccessDialog(
-                                title: 'Successful!',
-                                subtitle:
-                                    '''You have successfully canceled the event. 80% of the fonds will be returned to your account.''',
-                              ),
+                        final reason = await showModalBottomSheet<String>(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (context) => Padding(
+                            padding: EdgeInsets.only(
+                              bottom: MediaQuery.of(context).viewInsets.bottom,
                             ),
-                          );
-                        } else {
-                          if (context.mounted) {
-                            unawaited(
-                              showDialog(
-                                context: context,
-                                builder: (_) => const AppFailedDialog(
-                                  title: 'Failed to cancel !',
-                                  subtitle:
-                                      '''We weren't able to cancel you booking. Please try again later''',
+                            child: EventCancelReasonBottomSheet(
+                              event: params.event,
+                            ),
+                          ),
+                        );
+                        if (context.mounted) {
+                          context.read<EventsBloc>().add(
+                                EventsCancelBookingEvent(
+                                  eventId: params.event.id,
+                                  reason: reason,
+                                  onSuccess: () {
+                                    unawaited(
+                                      showDialog<void>(
+                                        context: context,
+                                        builder: (_) => const AppSuccessDialog(
+                                          title: 'Cancellation successful!',
+                                          subtitle:
+                                              '''You have successfully canceled the event. 80% of the funds will be returned to your account.''',
+                                          showContactButton: false,
+                                        ),
+                                      ).whenComplete(
+                                        () {
+                                          if (context.mounted) {
+                                            context.go('/events');
+                                          }
+                                        },
+                                      ),
+                                    );
+                                  },
+                                  onError: () {
+                                    unawaited(
+                                      showDialog<void>(
+                                        context: context,
+                                        builder: (_) => const AppFailedDialog(
+                                          title: 'Failed to cancel !',
+                                          subtitle:
+                                              '''We weren't able to cancel you booking. Please try again later''',
+                                        ),
+                                      ).whenComplete(
+                                        () {
+                                          if (context.mounted) {
+                                            context.go('/events');
+                                          }
+                                        },
+                                      ),
+                                    );
+                                  },
                                 ),
-                              ),
-                            );
-                          }
+                              );
                         }
                       }
                     },
@@ -321,38 +354,49 @@ class EventsDetails extends StatelessWidget {
                   ),
                 ),
               )
-            else if (!params.userMode)
+            else if (!params.showAsParticipant)
               Expanded(
                 child: ElevatedButton(
-                  onPressed: () {
-                    showEventTicketBuyBottomSheet(context, params.event).then(
-                      (value) {
-                        if (context.mounted) {
-                          if (value != null) {
-                            showDialog<void>(
-                              context: context,
-                              builder: (_) {
-                                if (!value) {
-                                  return const AppFailedDialog(
-                                    title: '''Payment was'nt successful!''',
-                                    subtitle:
-                                        '''We failed to complete your payment. Please try again.''',
-                                  );
-                                }
-                                return const AppSuccessDialog(
-                                  title: 'Payment was successful!',
-                                  subtitle:
-                                      'We are waiting for you at the event.',
-                                  showContactButton: false,
-                                );
-                              },
-                            ).whenComplete(() {
-                              if (context.mounted) context.go('/events');
-                            });
-                          }
-                        }
+                  onPressed: () async {
+                    final hasSucceedBooking =
+                        await showEventTicketBuyBottomSheet(
+                      context,
+                      params.event,
+                      (ticketCount) async {
+                        context.read<EventsBloc>().add(
+                              EventsAddBookingEvent(
+                                eventId: params.event.id,
+                                ticketCount: ticketCount,
+                              ),
+                            );
                       },
                     );
+
+                    if (hasSucceedBooking != null && context.mounted) {
+                      unawaited(
+                        showDialog<void>(
+                          context: context,
+                          builder: (_) {
+                            if (!hasSucceedBooking) {
+                              return const AppFailedDialog(
+                                title: '''Payment was'nt successful!''',
+                                subtitle:
+                                    '''We failed to complete your payment. Please try again.''',
+                              );
+                            }
+                            return const AppSuccessDialog(
+                              title: 'Payment was successful!',
+                              subtitle: 'We are waiting for you at the event.',
+                              showContactButton: false,
+                            );
+                          },
+                        ).whenComplete(
+                          () {
+                            if (context.mounted) context.go('/events');
+                          },
+                        ),
+                      );
+                    }
                   },
                   child: const Text(
                     'Tickets',
@@ -369,4 +413,14 @@ class EventsDetails extends StatelessWidget {
       ),
     );
   }
+}
+
+class EventsDetailsPageParams {
+  const EventsDetailsPageParams({
+    required this.event,
+    this.showAsParticipant = false,
+  });
+
+  final Event event;
+  final bool showAsParticipant;
 }

@@ -5,14 +5,14 @@ import 'package:repat_event/features/events/domain/entities/event.dart';
 abstract class EventsDataSource {
   Future<List<EventModel>> fetchEvents({
     DateTime? byDate,
-    EventStatus? byStatus,
+    List<EventStatus>? byStatus,
     EventLocationType? byLocationType,
   });
 
   Future<List<EventModel>> fetchUserRegisteredEvents(
     String userId, {
     DateTime? byDate,
-    EventStatus? byStatus,
+    List<EventStatus>? byStatus,
     EventLocationType? byLocationType,
   });
 

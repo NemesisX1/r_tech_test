@@ -16,7 +16,7 @@ class EventsFirestoreDataSource implements EventsDataSource {
   @override
   Future<List<EventModel>> fetchEvents({
     DateTime? byDate,
-    EventStatus? byStatus,
+    List<EventStatus>? byStatus,
     EventLocationType? byLocationType,
   }) async {
     final events = <EventModel>[];
@@ -35,16 +35,14 @@ class EventsFirestoreDataSource implements EventsDataSource {
         }
       }
 
-      if (byStatus != null && eventModel.status != byStatus) {
-        continue;
-      }
-
-      if (byLocationType != null && eventModel.type != byLocationType) {
+      if (byStatus != null && !byStatus.contains(eventModel.status)) {
         continue;
       }
 
       events.add(eventModel);
     }
+
+    events.sort((a, b) => b.startDate.compareTo(a.startDate));
 
     return events;
   }
@@ -144,7 +142,7 @@ class EventsFirestoreDataSource implements EventsDataSource {
   Future<List<EventModel>> fetchUserRegisteredEvents(
     String userId, {
     DateTime? byDate,
-    EventStatus? byStatus,
+    List<EventStatus>? byStatus,
     EventLocationType? byLocationType,
   }) async {
     final events = <EventModel>[];
@@ -171,7 +169,7 @@ class EventsFirestoreDataSource implements EventsDataSource {
         }
       }
 
-      if (byStatus != null && eventModel.status != byStatus) {
+      if (byStatus != null && !byStatus.contains(eventModel.status)) {
         continue;
       }
 
@@ -181,6 +179,8 @@ class EventsFirestoreDataSource implements EventsDataSource {
 
       events.add(eventModel);
     }
+
+    events.sort((a, b) => b.startDate.compareTo(a.startDate));
 
     return events;
   }

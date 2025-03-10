@@ -3,14 +3,14 @@ import 'package:repat_event/features/events/domain/entities/event.dart';
 abstract class EventsRepository {
   Future<List<Event>> getEvents({
     DateTime? byDate,
-    EventStatus? byStatus,
+    List<EventStatus>? byStatus,
     EventLocationType? byLocationType,
   });
 
   Future<List<Event>> getUserRegisteredEvents(
     String userId, {
     DateTime? byDate,
-    EventStatus? byStatus,
+    List<EventStatus>? byStatus,
     EventLocationType? byLocationType,
   });
 

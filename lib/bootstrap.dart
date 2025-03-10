@@ -4,8 +4,6 @@ import 'dart:developer';
 import 'package:bloc/bloc.dart';
 import 'package:flutter/widgets.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:repat_event/core/fixtures/events_fixture.dart';
-
 import 'package:repat_event/locator.dart';
 
 class AppBlocObserver extends BlocObserver {
@@ -35,7 +33,7 @@ Future<void> bootstrap(FutureOr<Widget> Function() builder) async {
 
   await setupLocator();
 
-  await seedEvents();
+//  await seedEvents();
 
   // Add cross-flavor configuration here
 
